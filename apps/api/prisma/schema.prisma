@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Sex {
+  female
+  male
+}
+
+enum ActivityLevel {
+  sedentary
+  light
+  moderate
+  active
+}
+
+enum MealSlot {
+  breakfast
+  lunch
+  snack
+  dinner
+}
+
+enum MealSource {
+  photo
+  text
+  repeat
+}
+
+enum Confidence {
+  high
+  medium
+  low
+}
+
+/// One anonymous user per device. There is no login; the device id is the only identity.
+model User {
+  id         String      @id @default(uuid()) @db.Uuid
+  deviceId   String      @unique @db.Uuid
+  createdAt  DateTime    @default(now()) @db.Timestamptz(3)
+  profile    Profile?
+  meals      Meal[]
+  aiRequests AiRequest[]
+}
+
+/// The profile and the plan derived from it. The plan is stored (not recomputed on read) so a
+/// later change to the formula does not silently move a user's target.
+model Profile {
+  userId       String        @id @db.Uuid
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  sex          Sex?
+  age          Int
+  weightKg     Float
+  heightCm     Float
+  goalWeightKg Float
+  activity     ActivityLevel
+
+  maintenanceKcal  Int
+  targetKcal       Int
+  dailyDeficitKcal Int
+  proteinTargetG   Int
+  weeksToGoal      Int?
+  floorApplied     Boolean
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model Meal {
+  id            String     @id @default(uuid()) @db.Uuid
+  userId        String     @db.Uuid
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot          MealSlot
+  eatenAt       DateTime   @db.Timestamptz(3)
+  source        MealSource
+  totalKcal     Int
+  totalProteinG Float
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime   @updatedAt @db.Timestamptz(3)
+  items         MealItem[]
+
+  /// A day's meals, and the streak look-back.
+  @@index([userId, eatenAt])
+  /// "Most recent meal in this slot" for the repeat suggestion.
+  @@index([userId, slot, eatenAt])
+}
+
+model MealItem {
+  id         String     @id @default(uuid()) @db.Uuid
+  mealId     String     @db.Uuid
+  meal       Meal       @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  name       String
+  portion    String
+  kcal       Int
+  proteinG   Float
+  confidence Confidence
+  /// Order of the item within its meal, starting at 0.
+  position   Int
+
+  @@unique([mealId, position])
+}
+
+/// One row per attempt against an AI model. Never stores the image or the text sent.
+model AiRequest {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  provider   String
+  model      String
+  /// "photo" or "text".
+  source     String
+  durationMs Int
+  /// "success" or "failure".
+  outcome    String
+  errorCode  String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}

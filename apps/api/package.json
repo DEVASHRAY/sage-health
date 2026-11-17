@@ -1,0 +1,29 @@
+{
+  "name": "@sage/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/server.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "node --env-file-if-exists=../../.env ../../node_modules/prisma/build/index.js migrate deploy",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.4.3",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.2.2",
+    "@prisma/client": "^6.19.3",
+    "@sage/shared": "*",
+    "fastify": "^5.12.8",
+    "pino": "^10.4.0",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.15",
+    "undici": "^6.29.1",
+    "zod": "^4.6.7"
+  },
+  "description": "Sage HTTP API: Fastify, Prisma, Postgres."
+}
